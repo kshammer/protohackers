@@ -1,6 +1,6 @@
-use std::thread; 
-use std::net::{TcpListener, TcpStream, Shutdown};
 use std::io::{Read, Write};
+use std::net::{Shutdown, TcpListener, TcpStream};
+use std::thread;
 
 fn main() {
     let listener = TcpListener::bind("0.0.0.0:3333").unwrap();
@@ -9,9 +9,7 @@ fn main() {
         match stream {
             Ok(stream) => {
                 println!("New Connection {}", stream.peer_addr().unwrap());
-                thread::spawn(move || {
-                    handle_client(stream)
-                });
+                thread::spawn(move || handle_client(stream));
             }
             Err(e) => {
                 println!("Error: {}", e);
@@ -22,17 +20,19 @@ fn main() {
     drop(listener);
 }
 
-fn handle_client(mut stream: TcpStream){
-    let mut data = [0 as u8; 50];
-    while match stream.read(&mut data) {
-        Ok(size) => {
-            stream.write(&data[0..size]).unwrap();
-            true
+fn handle_client(mut stream: TcpStream) {
+    loop {
+        let mut read = [0; 1028];
+        match stream.read(&mut read){
+            Ok(n) => {
+                if n == 0 {
+                    break; 
+                }
+                stream.write(&read[0..n]).unwrap();
+            }
+            Err(err) => {
+                panic!("{}",err); 
+            }
         }
-        Err(_) => {
-            println!("An error occured, terminating connection {}", stream.peer_addr().unwrap());
-            stream.shutdown(Shutdown::Both).unwrap();
-            false
-        }
-    } {}
+    }
 }
