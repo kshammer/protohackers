@@ -34,37 +34,45 @@ fn handle_client(mut stream: TcpStream) {
                     Ok(v) => v.trim_matches(char::from(0)),
                     Err(_) => "n",
                 };
-                println!("Request {}", s);
                 // break connection if message is invalid
                 if s == "n" {
                     stream.write_all(b"malformed").unwrap();
                     stream.flush().unwrap();
                     break;
                 }
-                let req: Request = match serde_json::from_str(&s) {
-                    Ok(r) => r,
-                    Err(_) => Request {
-                        method: "notreal".to_string(),
-                        number: 0,
-                    },
-                };
-                // break connection if method is not isPrime
-                if req.method != "isPrime" {
-                    stream.write_all(b"malformed").unwrap();
-                    stream.flush().unwrap();
-                    break; 
-                }
 
-                let prime = is_prime(req.number);
-                let resp = Response {
-                    method: "isPrime".to_string(),
-                    prime: prime,
-                };
-                let mut resp_bytes = serde_json::to_vec(&resp).unwrap();
-                resp_bytes.push(b'\n');
-                stream.write_all(&resp_bytes).unwrap();
-                stream.flush().unwrap();
-                 
+                let split = s.lines();
+                for s in split {
+                    let req: Request = match serde_json::from_str(&s) {
+                        Ok(r) => r,
+                        Err(_) => Request {
+                            method: "notreal".to_string(),
+                            number: 0,
+                        },
+                    };
+                    // break connection if method is not isPrime
+                    if req.method != "isPrime" {
+                        println!("Invalid Request {}, Response {}", s, "malformed");
+                        stream.write_all(b"malformed").unwrap();
+                        stream.flush().unwrap();
+                        break;
+                    }
+
+                    let prime = is_prime(req.number);
+                    let resp = Response {
+                        method: "isPrime".to_string(),
+                        prime: prime,
+                    };
+                    let mut resp_bytes = serde_json::to_vec(&resp).unwrap();
+                    resp_bytes.push(b'\n');
+                    print!(
+                        "Request {}, Response {}",
+                        serde_json::to_string(&req).unwrap(),
+                        String::from_utf8_lossy(&resp_bytes)
+                    );
+                    stream.write_all(&resp_bytes).unwrap();
+                    stream.flush().unwrap();
+                }
             }
             Err(err) => {
                 panic!("{}", err);
