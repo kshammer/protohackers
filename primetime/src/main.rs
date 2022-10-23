@@ -60,7 +60,7 @@ fn handle_client(mut stream: TcpStream) {
                 };
                 let resp_serial = serde_json::to_string(&resp).unwrap();
                 stream.write(resp_serial.as_bytes()).unwrap();
-                
+                continue; 
             }
             Err(err) => {
                 panic!("{}", err);
