@@ -47,7 +47,7 @@ fn handle_client(mut stream: TcpStream) {
                         Ok(r) => r,
                         Err(_) => Request {
                             method: "notreal".to_string(),
-                            number: 0,
+                            number: 0.0,
                         },
                     };
                     // break connection if method is not isPrime
@@ -81,12 +81,16 @@ fn handle_client(mut stream: TcpStream) {
     }
 }
 
-fn is_prime(num: i64) -> bool {
-    if num <= 1 {
+fn is_prime(num: f64) -> bool {
+    if num <= 1.0 {
         return false;
     }
-    for a in 2..num {
-        if num % a == 0 {
+    if num.fract() != 0.0 {
+        return false; 
+    }
+    let int = num as i64;
+    for a in 2..int {
+        if int % a == 0 {
             return false;
         }
     }
@@ -96,7 +100,7 @@ fn is_prime(num: i64) -> bool {
 #[derive(Serialize, Deserialize)]
 struct Request {
     method: String,
-    number: i64,
+    number: f64,
 }
 
 #[derive(Serialize, Deserialize)]
