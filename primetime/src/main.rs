@@ -34,10 +34,11 @@ fn handle_client(mut stream: TcpStream) {
                     Ok(v) => v.trim_matches(char::from(0)),
                     Err(_) => "n",
                 };
-                println!("{}", s);
+                println!("Request {}", s);
                 // break connection if message is invalid
                 if s == "n" {
-                    stream.write(&read[0..n]).unwrap();
+                    stream.write_all(b"malformed").unwrap();
+                    stream.flush().unwrap();
                     break;
                 }
                 let req: Request = match serde_json::from_str(&s) {
@@ -49,8 +50,9 @@ fn handle_client(mut stream: TcpStream) {
                 };
                 // break connection if method is not isPrime
                 if req.method != "isPrime" {
-                    stream.write(&read[0..n]).unwrap();
-                    break;
+                    stream.write_all(b"malformed").unwrap();
+                    stream.flush().unwrap();
+                    break; 
                 }
 
                 let prime = is_prime(req.number);
@@ -58,9 +60,11 @@ fn handle_client(mut stream: TcpStream) {
                     method: "isPrime".to_string(),
                     prime: prime,
                 };
-                let resp_serial = serde_json::to_string(&resp).unwrap();
-                stream.write(resp_serial.as_bytes()).unwrap();
-                continue; 
+                let mut resp_bytes = serde_json::to_vec(&resp).unwrap();
+                resp_bytes.push(b'\n');
+                stream.write_all(&resp_bytes).unwrap();
+                stream.flush().unwrap();
+                 
             }
             Err(err) => {
                 panic!("{}", err);
