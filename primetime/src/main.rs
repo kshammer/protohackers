@@ -1,6 +1,7 @@
+use primes::is_prime;
 use serde::{Deserialize, Serialize};
 use std::io::{Read, Write};
-use std::net::{TcpListener, TcpStream};
+use std::net::{TcpListener, TcpStream, Shutdown};
 use std::str;
 use std::thread;
 
@@ -24,7 +25,7 @@ fn main() {
 
 fn handle_client(mut stream: TcpStream) {
     loop {
-        let mut read = [0; 1028];
+        let mut read = [0; 999999];
         match stream.read(&mut read) {
             Ok(n) => {
                 if n == 0 {
@@ -36,8 +37,8 @@ fn handle_client(mut stream: TcpStream) {
                 };
                 // break connection if message is invalid
                 if s == "n" {
-                    stream.write_all(b"malformed").unwrap();
-                    stream.flush().unwrap();
+                    println!("Invalid Request {}", s); 
+                    stream.write(b"malformed").unwrap();
                     break;
                 }
 
@@ -53,25 +54,23 @@ fn handle_client(mut stream: TcpStream) {
                     // break connection if method is not isPrime
                     if req.method != "isPrime" {
                         println!("Invalid Request {}, Response {}", s, "malformed");
-                        stream.write_all(b"malformed").unwrap();
-                        stream.flush().unwrap();
-                        break;
+                        stream.write(b"malformed").unwrap();
+                        stream.shutdown(Shutdown::Both).unwrap();
                     }
 
-                    let prime = is_prime(req.number);
+                    let prime = prime(req.number);
                     let resp = Response {
                         method: "isPrime".to_string(),
                         prime: prime,
                     };
                     let mut resp_bytes = serde_json::to_vec(&resp).unwrap();
                     resp_bytes.push(b'\n');
-                    print!(
-                        "Request {}, Response {}",
-                        serde_json::to_string(&req).unwrap(),
-                        String::from_utf8_lossy(&resp_bytes)
-                    );
-                    stream.write_all(&resp_bytes).unwrap();
-                    stream.flush().unwrap();
+                   // print!(
+                    //     "Request {}, Response {}",
+                    //     serde_json::to_string(&req).unwrap(),
+                    //     String::from_utf8_lossy(&resp_bytes)
+                    // );
+                    stream.write(&resp_bytes).unwrap();
                 }
             }
             Err(err) => {
@@ -81,20 +80,14 @@ fn handle_client(mut stream: TcpStream) {
     }
 }
 
-fn is_prime(num: f64) -> bool {
+fn prime(num: f64) -> bool {
     if num <= 1.0 {
         return false;
     }
     if num.fract() != 0.0 {
-        return false; 
+        return false;
     }
-    let int = num as i64;
-    for a in 2..int {
-        if int % a == 0 {
-            return false;
-        }
-    }
-    true
+    is_prime(num as u64)
 }
 
 #[derive(Serialize, Deserialize)]
